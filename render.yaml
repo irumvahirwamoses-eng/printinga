@@ -3,7 +3,7 @@
 # services, so no Render database is required.
 services:
   - type: web
-    name: schoolprint
+    name: printinga
     runtime: node
     region: oregon
     plan: free
