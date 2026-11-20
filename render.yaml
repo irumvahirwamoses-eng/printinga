@@ -1,0 +1,56 @@
+# Render Blueprint — one free web service serves the API, Socket.IO and the
+# built React client. MongoDB Atlas and Cloudinary are external free-tier
+# services, so no Render database is required.
+services:
+  - type: web
+    name: schoolprint
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # CLIENT_URL is derived automatically from Render's RENDER_EXTERNAL_HOSTNAME
+      # (see server/src/config/index.ts). Override it only for a custom domain
+      # or a separate frontend host.
+
+      - key: MONGODB_URI
+        sync: false # Atlas connection string, e.g. mongodb+srv://user:pass@cluster.mongodb.net/schoolprint
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: COOKIE_SAME_SITE
+        value: lax
+
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        value: noreply@schoolprint.local
+
+      # Creates the first officer only when the database has none.
+      - key: SEED_OFFICER_NATIONAL_ID
+        sync: false
+      - key: SEED_OFFICER_PASSWORD
+        sync: false
