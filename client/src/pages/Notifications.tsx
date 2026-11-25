@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Bell, CircleCheck, ExternalLink, Inbox } from 'lucide-react';
@@ -6,12 +6,20 @@ import api from '../lib/api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
+import { getSocket } from '../lib/socket';
 
 export default function NotificationsPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['notifications'], queryFn: async () => (await api.get('/notifications?limit=50')).data.data });
   const items = data?.items || [];
-  const unreadCount = items.filter((n: any) => !n.isRead).length;
+  const unreadCount = data?.unreadCount ?? items.filter((n: any) => !n.isRead).length;
+
+  useEffect(() => {
+    const s = getSocket();
+    const onNotification = () => qc.invalidateQueries({ queryKey: ['notifications'] });
+    s.on('notification', onNotification);
+    return () => { s.off('notification', onNotification); };
+  }, [qc]);
 
   const refreshBadge = () => window.dispatchEvent(new Event('notifications:changed'));
   const markRead = async (id: string) => { await api.patch(`/notifications/${id}/read`); qc.invalidateQueries({ queryKey: ['notifications'] }); refreshBadge(); };

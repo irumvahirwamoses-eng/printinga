@@ -59,10 +59,10 @@ export async function createRequest(teacherId: string, data: any) {
     relatedRequestId: request._id,
     linkUrl: `/requests/${request._id}`,
   }));
-  if (notifs.length) await Notification.insertMany(notifs);
+  const notifications = notifs.length ? await Notification.insertMany(notifs) : [];
 
   await ActivityLog.create({ userId: teacherId, userRole: 'TEACHER', action: 'REQUEST_CREATED', entityType: 'PrintRequest', entityId: request._id });
-  return request;
+  return { request, notifications };
 }
 
 export async function listRequests(user: { id: string; role: UserRole }, query: any) {
@@ -162,10 +162,11 @@ export async function changeStatus(user: { id: string; role: UserRole }, id: str
     CANCELLED: 'REQUEST_CANCELLED', FAILED: 'REQUEST_FAILED',
   };
   const notifType = typeMap[newStatus];
+  let notification: any = null;
   if (notifType) {
     const targetUserId = user.role === 'OFFICER' ? req.teacherId.toString() : (await User.findOne({ role: 'OFFICER', isActive: true }))?._id?.toString();
     if (targetUserId) {
-      await Notification.create({
+      notification = await Notification.create({
         userId: targetUserId,
         type: notifType,
         title: `Request ${newStatus.replace(/_/g, ' ').toLowerCase()}`,
@@ -176,5 +177,5 @@ export async function changeStatus(user: { id: string; role: UserRole }, id: str
     }
   }
 
-  return req;
+  return { request: req, notification };
 }

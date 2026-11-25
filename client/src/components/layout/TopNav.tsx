@@ -18,11 +18,9 @@ export function TopNav({ onMenu }: { onMenu: () => void }) {
     load();
     window.addEventListener('notifications:changed', load);
     const s = getSocket();
-    const onNotif = (payload: any) => {
-      // Don't count messages the current user just sent.
-      if (payload?.senderId && String(payload.senderId) === user.id) return;
-      setUnread((u) => u + 1);
-    };
+    // Refetch instead of incrementing so duplicate events (e.g. a message sent
+    // to both the request room and the user room) can't inflate the badge.
+    const onNotif = () => load();
     s.on('notification', onNotif);
     s.on('new_message', onNotif);
     return () => {

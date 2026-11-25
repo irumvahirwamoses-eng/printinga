@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText, RefreshCw, Search, Eye } from 'lucide-react';
 import api from '../lib/api';
@@ -9,10 +9,12 @@ import { ChatButton } from '../components/ChatButton';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
+import { getSocket } from '../lib/socket';
 
 const statuses = ['', 'PENDING', 'ACCEPTED', 'PROCESSING', 'PRINTING', 'PRINTED', 'READY_FOR_COLLECTION', 'COLLECTED', 'REJECTED', 'CANCELLED', 'FAILED'];
 
 export default function OfficerRequests() {
+  const qc = useQueryClient();
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
   const [search, setSearch] = useState('');
@@ -21,6 +23,16 @@ export default function OfficerRequests() {
     queryFn: async () => (await api.get('/requests', { params: { status: status || undefined, priority: priority || undefined, search: search || undefined, limit: 100 } })).data.data,
   });
   const items = data?.items || [];
+
+  useEffect(() => {
+    const s = getSocket();
+    const onNewRequest = () => {
+      qc.invalidateQueries({ queryKey: ['officerRequests'] });
+      qc.invalidateQueries({ queryKey: ['overview'] });
+    };
+    s.on('request_created', onNewRequest);
+    return () => { s.off('request_created', onNewRequest); };
+  }, [qc]);
 
   return (
     <div>

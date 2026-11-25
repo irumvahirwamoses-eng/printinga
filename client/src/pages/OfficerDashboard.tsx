@@ -1,5 +1,5 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Users, FileText, Clock3, Printer, CheckCircle2, Package, ArrowRight } from 'lucide-react';
 import api from '../lib/api';
@@ -9,11 +9,24 @@ import { ChatButton } from '../components/ChatButton';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { Button } from '../components/ui/Button';
+import { getSocket } from '../lib/socket';
 
 export default function OfficerDashboard() {
+  const qc = useQueryClient();
   const { data: reqData } = useQuery({ queryKey: ['officerReqs'], queryFn: async () => (await api.get('/requests?limit=8')).data.data });
   const { data: overview } = useQuery({ queryKey: ['overview'], queryFn: async () => (await api.get('/reports/overview')).data.data });
   const items = reqData?.items || [];
+
+  useEffect(() => {
+    const s = getSocket();
+    const onNewRequest = () => {
+      qc.invalidateQueries({ queryKey: ['officerReqs'] });
+      qc.invalidateQueries({ queryKey: ['overview'] });
+    };
+    s.on('request_created', onNewRequest);
+    return () => { s.off('request_created', onNewRequest); };
+  }, [qc]);
+
   const b = overview?.statusBreakdown || {};
 
   const cards = [

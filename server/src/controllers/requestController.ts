@@ -23,11 +23,18 @@ export const createRequestSchema = z.object({
   }),
 });
 
+function emitNotification(io: any, notification: any) {
+  if (!io || !notification) return;
+  const userId = notification.userId?.toString?.() || notification.userId;
+  if (userId) io.to(`user:${userId}`).emit('notification', notification);
+}
+
 export const createRequest = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const result = await svc.createRequest(req.user!.id, req.body);
+  const { request, notifications } = await svc.createRequest(req.user!.id, req.body);
   const io = req.app.get('io');
-  io?.to('role:OFFICER').emit('request_created', { id: result._id });
-  res.status(201).json(ok(result, 'Request submitted'));
+  io?.to('role:OFFICER').emit('request_created', { id: request._id });
+  notifications.forEach((n: any) => emitNotification(io, n));
+  res.status(201).json(ok(request, 'Request submitted'));
 });
 
 export const listRequests = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -53,16 +60,20 @@ export const changeStatusSchema = z.object({
 });
 
 export const changeStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const result = await svc.changeStatus(req.user!, req.params.id, req.body.status, req.body.comment);
+  const { request, notification } = await svc.changeStatus(req.user!, req.params.id, req.body.status, req.body.comment);
   const io = req.app.get('io');
-  io?.to(`request:${req.params.id}`).emit('status_change', { requestId: req.params.id, status: result.status });
-  io?.to(`user:${result.teacherId.toString()}`).emit('status_change', { requestId: req.params.id, status: result.status });
-  res.json(ok(result, 'Status updated'));
+  io?.to(`request:${req.params.id}`).emit('status_change', { requestId: req.params.id, status: request.status });
+  io?.to(`user:${request.teacherId.toString()}`).emit('status_change', { requestId: req.params.id, status: request.status });
+  emitNotification(io, notification);
+  res.json(ok(request, 'Status updated'));
 });
 
 export const cancelRequest = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const result = await svc.changeStatus(req.user!, req.params.id, 'CANCELLED' as any, req.body?.reason);
-  res.json(ok(result, 'Request cancelled'));
+  const { request, notification } = await svc.changeStatus(req.user!, req.params.id, 'CANCELLED' as any, req.body?.reason);
+  const io = req.app.get('io');
+  io?.to(`request:${req.params.id}`).emit('status_change', { requestId: req.params.id, status: request.status });
+  emitNotification(io, notification);
+  res.json(ok(request, 'Request cancelled'));
 });
 
 export const getHistory = asyncHandler(async (req: AuthRequest, res: Response) => {
