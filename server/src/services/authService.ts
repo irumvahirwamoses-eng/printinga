@@ -11,6 +11,7 @@ const MAX_FAILED = 5;
 export async function login(nationalId: string, password: string) {
   const user = await User.findOne({ nationalId }).select('+password +refreshTokens');
   if (!user) throw new AppError('Invalid credentials', 401);
+  if (user.isDeleted) throw new AppError('Invalid credentials', 401);
   if (!user.isActive) throw new AppError('Account is deactivated', 403);
   if (user.isLocked()) throw new AppError('Account locked. Try again later.', 423);
 
@@ -46,7 +47,7 @@ export async function refresh(refreshToken: string) {
     throw new AppError('Invalid refresh token', 401);
   }
   const user = await User.findById(payload.sub).select('+refreshTokens');
-  if (!user || !user.isActive) throw new AppError('Invalid refresh token', 401);
+  if (!user || !user.isActive || user.isDeleted) throw new AppError('Invalid refresh token', 401);
   const hashed = hashToken(refreshToken);
   const idx = (user.refreshTokens || []).indexOf(hashed);
   if (idx === -1) {

@@ -31,6 +31,10 @@ export const setTeacherStatusSchema = z.object({
   body: z.object({ isActive: z.boolean() }).strict(),
 });
 
+export const teacherIdSchema = z.object({
+  params: z.object({ id: z.string().min(1) }),
+});
+
 export const createTeacher = asyncHandler(async (req: AuthRequest, res: Response) => {
   const result = await svc.createTeacher(req.body);
   res.status(201).json(ok({ id: result.teacher._id, tempPassword: result.tempPassword }, 'Teacher registered'));
@@ -59,6 +63,11 @@ export const setTeacherStatus = asyncHandler(async (req: AuthRequest, res: Respo
 export const resetTeacherPassword = asyncHandler(async (req: AuthRequest, res: Response) => {
   const result = await svc.resetTeacherPassword(req.params.id);
   res.json(ok(result, 'Password reset'));
+});
+
+export const deleteTeacher = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const result = await svc.deleteTeacher(req.params.id);
+  res.json(ok(result, 'Teacher deleted'));
 });
 
 export const previewBulkImport = asyncHandler(async (req: AuthRequest, res: Response) => {

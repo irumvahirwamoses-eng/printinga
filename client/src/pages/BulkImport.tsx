@@ -36,7 +36,7 @@ export default function BulkImport() {
 
   const downloadCredentials = () => {
     if (!result?.credentials) return;
-    const header = 'Full Name,National ID (masked),Temporary Password\n';
+    const header = 'Full Name,National ID (masked),Default Password\n';
     const rows = result.credentials.map((c: any) => `"${String(c.fullName).replace(/"/g, '""')}","${String(c.nationalIdMasked).replace(/"/g, '""')}","${String(c.tempPassword).replace(/"/g, '""')}"`).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -95,7 +95,7 @@ export default function BulkImport() {
           <div className="card-body space-y-3">
             <p className="text-sm text-slate-700">Imported: <strong>{result.imported}</strong> · Failed/Skipped: <strong>{result.failed}</strong> · Total: <strong>{result.total}</strong></p>
             <Button icon={Download} onClick={downloadCredentials}>Download credentials report (CSV)</Button>
-            <p className="text-xs text-slate-500">Temporary passwords appear only in this report. Share it securely and require a first-login password change.</p>
+            <p className="text-xs text-slate-500">All imported teachers start with the default password <strong className="font-mono">changeme</strong>. They will be asked to change it on first login.</p>
           </div>
         </section>
       )}

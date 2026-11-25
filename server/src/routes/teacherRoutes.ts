@@ -24,5 +24,6 @@ router.get('/:id', ctrl.getTeacher);
 router.patch('/:id', validate(ctrl.updateTeacherSchema), ctrl.updateTeacher);
 router.patch('/:id/status', validate(ctrl.setTeacherStatusSchema), ctrl.setTeacherStatus);
 router.post('/:id/reset-password', ctrl.resetTeacherPassword);
+router.delete('/:id', validate(ctrl.teacherIdSchema), ctrl.deleteTeacher);
 
 export default router;

@@ -1,6 +1,7 @@
 import { User } from '../models/User';
 import { AppError } from '../middleware/errorHandler';
 import { generateTempPassword } from '../utils/generateTempPassword';
+import { DEFAULT_TEACHER_PASSWORD } from '../utils/defaultPassword';
 import { maskNationalId } from '../utils/maskNationalId';
 import ExcelJS from 'exceljs';
 import { parse as csvParse } from 'csv-parse/sync';
@@ -13,10 +14,12 @@ export interface TeacherInput {
   department?: string;
 }
 
+const activeTeacherFilter = { role: 'TEACHER', isDeleted: { $ne: true } };
+
 export async function createTeacher(input: TeacherInput) {
   const existing = await User.findOne({ nationalId: input.nationalId });
   if (existing) throw new AppError('National ID already registered', 409);
-  const tempPassword = generateTempPassword();
+  const tempPassword = DEFAULT_TEACHER_PASSWORD;
   const teacher = await User.create({
     ...input,
     role: 'TEACHER',
@@ -32,7 +35,7 @@ function escapeRegex(value: string) {
 }
 
 export async function listTeachers(query: { search?: string; department?: string; isActive?: string; page?: number; limit?: number }) {
-  const filter: any = { role: 'TEACHER' };
+  const filter: any = { ...activeTeacherFilter };
   if (query.search) {
     const safe = escapeRegex(String(query.search).slice(0, 100));
     filter.$or = [
@@ -68,7 +71,7 @@ export async function listTeachers(query: { search?: string; department?: string
 }
 
 export async function getTeacher(id: string) {
-  const user = await User.findOne({ _id: id, role: 'TEACHER' });
+  const user = await User.findOne({ _id: id, ...activeTeacherFilter });
   if (!user) throw new AppError('Teacher not found', 404);
   return {
     id: user._id.toString(),
@@ -84,7 +87,7 @@ export async function getTeacher(id: string) {
 }
 
 export async function updateTeacher(id: string, data: Partial<TeacherInput>) {
-  const user = await User.findOne({ _id: id, role: 'TEACHER' });
+  const user = await User.findOne({ _id: id, ...activeTeacherFilter });
   if (!user) throw new AppError('Teacher not found', 404);
   // Whitelist editable fields. Never allow role, nationalId, password, etc.
   const editable: (keyof TeacherInput)[] = ['fullName', 'email', 'phone', 'department'];
@@ -98,7 +101,7 @@ export async function updateTeacher(id: string, data: Partial<TeacherInput>) {
 
 export async function setTeacherStatus(id: string, isActive: boolean) {
   if (typeof isActive !== 'boolean') throw new AppError('isActive must be a boolean', 400);
-  const user = await User.findOne({ _id: id, role: 'TEACHER' });
+  const user = await User.findOne({ _id: id, ...activeTeacherFilter });
   if (!user) throw new AppError('Teacher not found', 404);
   user.isActive = isActive;
   await user.save();
@@ -106,7 +109,7 @@ export async function setTeacherStatus(id: string, isActive: boolean) {
 }
 
 export async function resetTeacherPassword(id: string) {
-  const user = await User.findOne({ _id: id, role: 'TEACHER' }).select('+password +refreshTokens');
+  const user = await User.findOne({ _id: id, ...activeTeacherFilter }).select('+password +refreshTokens');
   if (!user) throw new AppError('Teacher not found', 404);
   const tempPassword = generateTempPassword();
   user.password = tempPassword;
@@ -114,6 +117,18 @@ export async function resetTeacherPassword(id: string) {
   user.refreshTokens = [];
   await user.save();
   return { tempPassword };
+}
+
+export async function deleteTeacher(id: string) {
+  const user = await User.findOne({ _id: id, ...activeTeacherFilter }).select('+refreshTokens');
+  if (!user) throw new AppError('Teacher not found', 404);
+  // Soft delete keeps historical print requests and activity logs linked to the teacher.
+  user.isDeleted = true;
+  user.deletedAt = new Date();
+  user.isActive = false;
+  user.refreshTokens = [];
+  await user.save();
+  return { id: user._id.toString() };
 }
 
 function normalizeRow(row: Record<string, any>): TeacherInput & { _row: number } {
@@ -204,7 +219,7 @@ export async function confirmBulkImport(buffer: Buffer, filename: string) {
   const results: { nationalIdMasked: string; fullName: string; tempPassword: string }[] = [];
   for (const row of valid) {
     try {
-      const tempPassword = generateTempPassword();
+      const tempPassword = DEFAULT_TEACHER_PASSWORD;
       await User.create({
         fullName: row.fullName,
         nationalId: row.nationalId,

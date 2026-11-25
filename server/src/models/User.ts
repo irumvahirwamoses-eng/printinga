@@ -13,6 +13,8 @@ export interface IUser extends Document {
   role: UserRole;
   isActive: boolean;
   isFirstLogin: boolean;
+  isDeleted: boolean;
+  deletedAt?: Date;
   failedLoginAttempts: number;
   lockUntil?: Date;
   passwordResetToken?: string;
@@ -43,6 +45,8 @@ const userSchema = new Schema<IUser>(
     role: { type: String, enum: ['TEACHER', 'OFFICER'], required: true, index: true },
     isActive: { type: Boolean, default: true },
     isFirstLogin: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date },
     passwordResetToken: { type: String, select: false },

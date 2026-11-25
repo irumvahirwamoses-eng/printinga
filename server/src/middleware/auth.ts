@@ -16,8 +16,8 @@ export async function authenticate(req: AuthRequest, _res: Response, next: NextF
     const token = req.cookies?.accessToken || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
     if (!token) return next(new AppError('Authentication required', 401));
     const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload;
-    const user = await User.findById(decoded.sub).select('nationalId role isActive');
-    if (!user || !user.isActive) return next(new AppError('Account not available', 401));
+    const user = await User.findById(decoded.sub).select('nationalId role isActive isDeleted');
+    if (!user || !user.isActive || user.isDeleted) return next(new AppError('Account not available', 401));
     req.user = { id: user._id.toString(), role: user.role, nationalId: user.nationalId };
     next();
   } catch {
